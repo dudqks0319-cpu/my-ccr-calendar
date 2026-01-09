@@ -952,117 +952,178 @@
 
         @media (max-width: 768px) {
             .container {
-                padding: 10px;
-                border-radius: 0;
+                padding: 5px;
+                border: none;
+                box-shadow: none;
             }
 
+            /* 헤더 컴팩트하게 */
             .header {
                 flex-direction: column;
-                gap: 15px;
-                align-items: center;
-                text-align: center;
-            }
-
-            .logo {
-                flex-direction: column;
-                align-items: center;
+                gap: 10px;
+                margin-bottom: 5px;
             }
 
             .logo-icon {
-                margin-right: 0;
+                display: none;
+            }
+
+            /* 모바일에서 로고 아이콘 숨김 */
+
+            .title {
+                font-size: 20px !important;
+            }
+
+            .subtitle {
+                font-size: 12px !important;
                 margin-bottom: 5px;
             }
 
             .nav-buttons {
+                display: flex;
                 width: 100%;
-                justify-content: center;
-                margin: 5px 0;
+                gap: 5px;
             }
 
             .nav-buttons button {
-                padding: 10px 15px;
+                padding: 8px 0;
+                flex: 1;
                 font-size: 14px;
             }
 
             .action-buttons {
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 8px;
+                display: flex;
                 width: 100%;
+                gap: 5px;
             }
 
             .action-buttons button {
+                padding: 8px 0;
                 flex: 1;
-                min-width: 80px;
-                padding: 8px;
                 font-size: 13px;
+                min-width: 0;
             }
 
+            /* 달력 컨트롤 숨기거나 축소 */
             .calendar-controls {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                font-size: 12px;
+                gap: 5px;
+                margin-bottom: 5px;
             }
 
+            .cteam-selector {
+                font-size: 12px;
+            }
+
+            .cteam-selector select {
+                font-size: 12px;
+                padding: 2px;
+            }
+
+            /* 달력 테이블 최적화 - 스크롤 없이 한 화면에 */
             .calendar-wrapper {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
+                overflow-x: hidden;
+                /* 스크롤 제거 */
             }
 
             .calendar {
-                min-width: 600px;
-                /* Ensure table doesn't get too squished */
+                min-width: 0;
+                /* 최소 너비 제거 */
+                width: 100%;
+                table-layout: fixed;
+                /* 칸 너비 균등 분배 */
+            }
+
+            .calendar th {
+                padding: 4px 0;
+                font-size: 12px;
             }
 
             .calendar td {
-                height: 100px;
-                /* Reset height for mobile */
-                padding: 4px;
+                height: 80px;
+                /* 높이 약간 줄임 */
+                padding: 2px;
+                vertical-align: top;
+            }
+
+            /* 내부 요소들 아주 작게 */
+            .date-header {
+                margin-bottom: 2px;
             }
 
             .date-number {
-                font-size: 16px;
+                font-size: 14px;
             }
+
+            /* 시프트 뱃지(주/야)는 색으로 구분되므로 모바일에서 공간 부족하면 숨김 또는 축소 */
+            .shift-badge {
+                padding: 1px 3px;
+                font-size: 9px;
+                border-radius: 4px;
+            }
+
+            .sat-work-badge {
+                display: none;
+            }
+
+            /* 공간 부족 시 숨김 */
 
             .ccr-info {
-                font-size: 12px;
-                padding: 4px;
+                font-size: 10.5px;
+                /* 근무자 이름 쪼금 더 작게 */
+                padding: 2px 0;
+                background: transparent;
+                /* 배경 뺌 (공간 절약) */
+                font-weight: 700;
+                line-height: 1.2;
             }
 
-            /* Modal for mobile */
+            .ccr-label {
+                display: none;
+            }
+
+            /* 'CCR' 글자 숨김 (공간 부족) */
+
+            .c-team {
+                font-size: 9px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                /* 너무 길면 ... 처리 */
+            }
+
+            .red-memo,
+            .black-memo {
+                font-size: 9px;
+            }
+
+            .off-day {
+                font-size: 14px;
+                margin-top: 10px;
+            }
+
+            /* 모바일 모달 */
             .modal-content {
-                width: 95%;
-                margin: 20px auto;
-                max-height: 90vh;
-                overflow-y: auto;
+                width: 90%;
+                margin: 50px auto;
             }
 
             .settings-row {
                 flex-direction: column;
-                align-items: flex-start;
             }
 
             .settings-row label {
-                margin-bottom: 5px;
                 width: 100%;
+                margin-bottom: 2px;
             }
 
             .settings-row input,
             .settings-row select {
                 width: 100%;
-            }
-
-            .year-overview {
-                grid-template-columns: 1fr;
-                /* 1 month per row */
-            }
-
-            .settings-section {
-                padding: 10px;
-            }
-
-            .c-team-inputs {
-                grid-template-columns: 1fr;
+                box-sizing: border-box;
             }
         }
     </style>
