@@ -1232,16 +1232,30 @@
     <script>
         const DEFAULT_SETTINGS = {
             dayShiftStart: '2026-01-05', nightShiftStart: '2026-01-12',
-            silrerReferenceDate: '2026-01-05', silrerStartTeam: '주설비',
-            materialHandler: '',
-            teams: { conveyor: ['호빈', '민성', '동인', '선우', '윤수'], robot: ['광수', '영빈', '서용', '찬우', '성광'], mainEquip: ['우용', '재령', '민혁', '이진', '성운', '승현'] },
-            cTeams: { A: ['호빈', '영빈', '민혁'], B: ['민성', '광수', '재령'], C: ['동인', '서용', '이진'], D: ['선우', '찬우', '성운'], E: ['윤수', '성광', '승현'] },
+            silrerReferenceDate: '2026-01-12', silrerStartTeam: '컨베어',
+            materialHandler: '성운',
+            teams: {
+                conveyor: ['호빈', '민성', '동인', '선우', '윤수'],
+                robot: ['광수', '영빈', '서용', '찬우', '성광'],
+                mainEquip: ['우용', '재령', '민혁', '이진', '성운', '승현']
+            },
+            cTeams: {
+                A: ['동인', '영빈', '민혁'],
+                B: ['선우', '성광', '이진'],
+                C: ['호빈', '광수', '성운'],
+                D: ['윤수', '찬우', '우용'],
+                E: ['민성', '서용', '재령']
+            },
             cTeamByMonth: { '2026-01': 'A' },
-            ccrStartWorkers: { day: { day1am: '윤수', day1pm: '성광', day2am: '성광', day2pm: '재령' }, night: { day1am: '', day1pm: '', day2am: '', day2pm: '' } }
+            ccrStartWorkers: {
+                day: { day1am: '윤수', day1pm: '성광', day2am: '성광', day2pm: '재령' },
+                night: { day1am: '서용', day1pm: '성운', day2am: '성운', day2pm: '선우' }
+            }
         };
 
-        let settings = JSON.parse(localStorage.getItem('ccrSettings4')) || JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-        let calendarData = JSON.parse(localStorage.getItem('ccrCalendarData4')) || {};
+        // 데이터 키 변경으로 새 기본값 강제 적용
+        let settings = JSON.parse(localStorage.getItem('ccrSettings_v5')) || JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+        let calendarData = JSON.parse(localStorage.getItem('ccrData_v5')) || {};
         let currentYear = 2026, currentMonth = 1;
 
         const HOLIDAYS = {
@@ -1279,7 +1293,16 @@
             return diffWeeks % 2 === 0 ? 'day' : 'night';
         }
 
-        function getCTeamMembers(year, month) {
+        function getCTeamMembers(year, month, specificDate = null) {
+            if (specificDate) {
+                const dt = new Date(specificDate.getFullYear(), specificDate.getMonth(), specificDate.getDate());
+                const day = dt.getDay();
+                const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+                const monday = new Date(dt.setDate(diff));
+                const k = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}`;
+                const teamKey = settings.cTeamByMonth[k] || '';
+                return teamKey ? (settings.cTeams[teamKey] || []) : [];
+            }
             const k = `${year}-${String(month).padStart(2, '0')}`;
             const teamKey = settings.cTeamByMonth[k] || '';
             return teamKey ? (settings.cTeams[teamKey] || []) : [];
@@ -1294,21 +1317,24 @@
             if (override?.am && override?.pm) return override;
 
             const startWorkers = settings.ccrStartWorkers?.[shiftType] || {};
-            const cTeamMembers = getCTeamMembers(date.getFullYear(), date.getMonth() + 1);
+            // const cTeamMembers 삭제 (동적 계산)
 
-            // 팀별 근무자 목록 (C조 제외 등 필터링 적용)
-            const getWorkers = (team) => {
+            // 팀별 근무자 목록 (날짜별 동적 필터링)
+            const getWorkers = (team, d) => {
                 let w = [...settings.teams[team]];
                 if (shiftType === 'day' && settings.materialHandler) w = w.filter(x => x !== settings.materialHandler);
-                if (shiftType === 'night') w = w.filter(x => !cTeamMembers.includes(x));
+                if (shiftType === 'night') {
+                    const cMems = getCTeamMembers(d.getFullYear(), d.getMonth() + 1, d);
+                    w = w.filter(x => !cMems.includes(x));
+                }
                 return w;
             };
 
-            // 근무자가 어느 팀인지 찾기
+            // 근무자가 어느 팀인지 찾기 (Raw Data 검색)
             const findTeam = (worker) => {
                 const teams = ['conveyor', 'robot', 'mainEquip'];
                 for (const team of teams) {
-                    if (getWorkers(team).includes(worker)) return team;
+                    if (settings.teams[team].includes(worker)) return team;
                 }
                 return null;
             };
@@ -1336,8 +1362,8 @@
                 const tData = calendarData[tStr];
                 const shType = getShiftType(tempDate);
 
-                // 해당 shift 타입의 근무일이 아니면 스킵
-                if (shType !== shiftType || dow === 0 || h || (dow === 6 && !tData?.saturdayWork)) {
+                // 해당 shift 타입의 근무일이 아니면 스킵 (커스텀 휴일 tData.isHoliday 포함)
+                if (shType !== shiftType || dow === 0 || h || tData?.isHoliday || (dow === 6 && !tData?.saturdayWork)) {
                     tempDate.setDate(tempDate.getDate() + 1);
                     continue;
                 }
@@ -1354,7 +1380,7 @@
                     pmTeam = findTeam(pm);
                     // AM 팀 인덱스 업데이트 (해당 근무자 다음 순번으로)
                     if (amTeam) {
-                        const amWorkers = getWorkers(amTeam);
+                        const amWorkers = getWorkers(amTeam, tempDate);
                         const amIdx = amWorkers.indexOf(am);
                         if (amIdx >= 0 && teamIndices[amTeam] <= amIdx) {
                             teamIndices[amTeam] = amIdx + 1;
@@ -1362,7 +1388,7 @@
                     }
                     // PM 팀 인덱스 업데이트
                     if (pmTeam) {
-                        const pmWorkers = getWorkers(pmTeam);
+                        const pmWorkers = getWorkers(pmTeam, tempDate);
                         const pmIdx = pmWorkers.indexOf(pm);
                         if (pmIdx >= 0 && teamIndices[pmTeam] <= pmIdx) {
                             teamIndices[pmTeam] = pmIdx + 1;
@@ -1376,7 +1402,7 @@
                     pmTeam = findTeam(pm);
                     // AM 팀 인덱스 업데이트
                     if (amTeam) {
-                        const amWorkers = getWorkers(amTeam);
+                        const amWorkers = getWorkers(amTeam, tempDate);
                         const amIdx = amWorkers.indexOf(am);
                         if (amIdx >= 0 && teamIndices[amTeam] <= amIdx) {
                             teamIndices[amTeam] = amIdx + 1;
@@ -1384,7 +1410,7 @@
                     }
                     // PM 팀 인덱스 업데이트
                     if (pmTeam) {
-                        const pmWorkers = getWorkers(pmTeam);
+                        const pmWorkers = getWorkers(pmTeam, tempDate);
                         const pmIdx = pmWorkers.indexOf(pm);
                         if (pmIdx >= 0 && teamIndices[pmTeam] <= pmIdx) {
                             teamIndices[pmTeam] = pmIdx + 1;
@@ -1397,7 +1423,7 @@
 
                     // AM 팀에 따라 PM 팀 결정
                     pmTeam = getNextTeam(amTeam);
-                    const pmWorkers = getWorkers(pmTeam);
+                    const pmWorkers = getWorkers(pmTeam, tempDate);
 
                     if (pmWorkers.length > 0) {
                         pm = pmWorkers[teamIndices[pmTeam] % pmWorkers.length];
@@ -1493,20 +1519,20 @@
 
                     if (isOff) {
                         if (!holiday && !isSun) html += '<div class="off-day">OFF</div>';
-                        // 야간주 시작 일요일에 C조 표시 (다음 월요일이 야간주 첫날인 경우)
+                        // 야간주 시작 일요일에 C조 표시 (다음 월요일 기준 C조)
                         if (isSun) {
                             const nextMonday = new Date(date);
                             nextMonday.setDate(nextMonday.getDate() + 1);
                             const nextMondayShiftType = getShiftType(nextMonday);
                             if (nextMondayShiftType === 'night') {
-                                const cMembers = getCTeamMembers(currentYear, currentMonth);
+                                const cMembers = getCTeamMembers(currentYear, currentMonth, nextMonday);
                                 if (cMembers.length) html += `<div class="c-team">C조 ${cMembers.join(' ')}</div>`;
                             }
                         }
                     } else {
                         const ccr = getCCRWorkers(date, shiftType);
                         if (shiftType === 'night') {
-                            const cMembers = getCTeamMembers(currentYear, currentMonth);
+                            const cMembers = getCTeamMembers(currentYear, currentMonth, date);
                             if (cMembers.length) html += `<div class="c-team">C조 ${cMembers.join(' ')}</div>`;
                         }
                         html += `<div class="ccr-info"><span class="ccr-label">CCR</span>${ccr.am} ${ccr.pm}</div>`;
@@ -1531,8 +1557,8 @@
         function changeMonth(d) { currentMonth += d; if (currentMonth > 12) { currentMonth = 1; currentYear++; } if (currentMonth < 1) { currentMonth = 12; currentYear--; } renderCalendar(); }
         function goToToday() { const t = new Date(); currentYear = t.getFullYear(); currentMonth = t.getMonth() + 1; renderCalendar(); }
         function saveBottomMemo() { calendarData[`memo-${currentYear}-${currentMonth}`] = document.getElementById('bottomMemo').value; saveData(); }
-        function saveData() { localStorage.setItem('ccrCalendarData4', JSON.stringify(calendarData)); }
-        function saveSettings4() { localStorage.setItem('ccrSettings4', JSON.stringify(settings)); }
+        function saveData() { localStorage.setItem('ccrData_v5', JSON.stringify(calendarData)); }
+        function saveSettings4() { localStorage.setItem('ccrSettings_v5', JSON.stringify(settings)); }
 
         function toggleTheme() { document.body.dataset.theme = document.body.dataset.theme === 'dark' ? '' : 'dark'; localStorage.setItem('theme', document.body.dataset.theme); }
         function takeScreenshot() {
